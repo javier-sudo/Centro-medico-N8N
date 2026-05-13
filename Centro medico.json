@@ -1,0 +1,532 @@
+{
+  "name": "Centro medico",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Solicitud de Cita Médica",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Nombre completo",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Correo electrónico",
+              "fieldType": "email",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Teléfono",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Especialidad médica",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Medicina general"
+                  },
+                  {
+                    "option": "Pediatría"
+                  },
+                  {
+                    "option": "Dermatología"
+                  },
+                  {
+                    "option": "Traumatología"
+                  },
+                  {
+                    "option": "Ginecología"
+                  },
+                  {
+                    "option": "Psicología"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Motivo de consulta",
+              "fieldType": "textarea"
+            },
+            {
+              "fieldLabel": "Fecha preferida",
+              "fieldType": "date",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Hora preferida",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "09:00"
+                  },
+                  {
+                    "option": "10:00"
+                  },
+                  {
+                    "option": "11:00"
+                  },
+                  {
+                    "option": "12:00"
+                  },
+                  {
+                    "option": "14:00"
+                  },
+                  {
+                    "option": "15:00"
+                  },
+                  {
+                    "option": "16:00"
+                  },
+                  {
+                    "option": "17:00"
+                  }
+                ]
+              },
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [
+        5152,
+        1664
+      ],
+      "id": "3aafc5d9-6902-41ec-9fe7-e2b8cea31e75",
+      "name": "On form submission",
+      "webhookId": "7eb219cb-d01d-47b2-a3c7-b41fc3b6a175"
+    },
+    {
+      "parameters": {
+        "jsCode": "const f = $('On form submission').first().json;\nconst fechaStr = f['Fecha preferida'];\nconst horaStr = f['Hora preferida'] || '09:00';\nconst fechaInicio = new Date(`${fechaStr}T${horaStr}:00-04:00`);\nconst fechaFin = new Date(fechaInicio.getTime() + 60 * 60 * 1000);\nconst fechaLegible = fechaInicio.toLocaleString('es-CL', {\n  timeZone: 'America/Santiago',\n  dateStyle: 'full',\n  timeStyle: 'short'\n});\nreturn [{\n  json: {\n    Nombre: f['Nombre completo'],\n    Correo: f['Correo electrónico'],\n    Telefono: f['Teléfono'],\n    Especialidad: f['Especialidad médica'],\n    Motivo: f['Motivo de consulta'] || '',\n    Fecha: fechaLegible,\n    Hora: horaStr,\n    start: fechaInicio.toISOString(),\n    end: fechaFin.toISOString(),\n    titulo_evento: `Cita médica - ${f['Nombre completo']} - ${f['Especialidad médica']}`,\n    descripcion: `Paciente: ${f['Nombre completo']}\\nEmail: ${f['Correo electrónico']}\\nTeléfono: ${f['Teléfono']}\\nEspecialidad: ${f['Especialidad médica']}\\nMotivo: ${f['Motivo de consulta'] || 'No especificado'}`\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5392,
+        1664
+      ],
+      "id": "336fa822-beb0-4c10-8b7e-85ee133c6519",
+      "name": "Preparar datos"
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "mode": "list",
+          "value": "primary"
+        },
+        "start": "={{ $json.start }}",
+        "end": "={{ $json.end }}",
+        "additionalFields": {
+          "description": "={{ $json.descripcion }}",
+          "sendUpdates": "all"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        5632,
+        1424
+      ],
+      "id": "fd3a27d8-24c8-4818-b6bc-047140b9f106",
+      "name": "Crear evento Calendar",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "u30EIJ1lWQnCQ3mB",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Preparar datos').item.json.Correo }}",
+        "subject": "=✅ Tu cita médica está confirmada — {{ $('Preparar datos').item.json.Fecha }}",
+        "message": "=<div style=\"margin:0;padding:0;background-color:#f6f8fb;font-family:Arial,Helvetica,sans-serif;color:#1f2937\"><div style=\"max-width:620px;margin:0 auto;padding:32px 16px\"><div style=\"background-color:#ffffff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden\"><div style=\"background-color:#0f766e;padding:24px 28px;color:#ffffff\"><h1 style=\"margin:0;font-size:22px;font-weight:700\">✅ Cita médica confirmada</h1><p style=\"margin:8px 0 0;font-size:14px\">Tu solicitud ha sido registrada exitosamente.</p></div><div style=\"padding:28px\"><p style=\"margin:0 0 16px;font-size:16px\">Hola <strong>{{ $('Preparar datos').item.json.Nombre }}</strong>,</p><p style=\"margin:0 0 16px;font-size:15px;line-height:1.6\">Tu cita médica ha sido agendada. Aquí están los detalles:</p><div style=\"background-color:#f0fdf4;border-left:4px solid #0f766e;border-radius:6px;padding:20px;margin:20px 0\"><p style=\"margin:6px 0;font-size:15px\">👨‍⚕️ <strong>Especialidad:</strong> {{ $('Preparar datos').item.json.Especialidad }}</p><p style=\"margin:6px 0;font-size:15px\">📅 <strong>Fecha y hora:</strong> {{ $('Preparar datos').item.json.Fecha }}</p><p style=\"margin:6px 0;font-size:15px\">📍 <strong>Lugar:</strong> Consultorio — Av. Principal 1234</p></div><div style=\"background-color:#fff7ed;border-left:4px solid #f59e0b;border-radius:6px;padding:16px;margin:20px 0\"><p style=\"margin:0;font-size:13px\">⚠️ Si necesitas cancelar, contáctanos con al menos <strong>24 horas de anticipación</strong>.</p></div><p style=\"margin:24px 0 0;font-size:14px\">¡Te esperamos!<br><strong>Equipo Médico</strong></p></div></div></div></div>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        5632,
+        1584
+      ],
+      "id": "7b9983a7-f7ac-4912-86cf-daa1bfe6d3e3",
+      "name": "Email al paciente",
+      "webhookId": "474d174f-9a3d-45ed-b810-74785b754032",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "LoHXz94KQHUal5E3",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "=javier.larraguerrero@gmail.com",
+        "subject": "=📅 Nueva cita — {{ $('Preparar datos').item.json.Nombre }} — {{ $('Preparar datos').item.json.Fecha }}",
+        "message": "=<div style=\"margin:0;padding:0;background-color:#f6f8fb;font-family:Arial,Helvetica,sans-serif;color:#1f2937\"><div style=\"max-width:620px;margin:0 auto;padding:32px 16px\"><div style=\"background-color:#ffffff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden\"><div style=\"background-color:#0f766e;padding:24px 28px;color:#ffffff\"><h1 style=\"margin:0;font-size:22px;font-weight:700\">📅 Nueva cita agendada</h1></div><div style=\"padding:28px\"><div style=\"background-color:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:16px\"><p style=\"margin:6px 0;font-size:14px\">👤 <strong>Paciente:</strong> {{ $('Preparar datos').item.json.Nombre }}</p><p style=\"margin:6px 0;font-size:14px\">📧 <strong>Email:</strong> {{ $('Preparar datos').item.json.Correo }}</p><p style=\"margin:6px 0;font-size:14px\">📱 <strong>Teléfono:</strong> {{ $('Preparar datos').item.json.Telefono }}</p><p style=\"margin:6px 0;font-size:14px\">👨‍⚕️ <strong>Especialidad:</strong> {{ $('Preparar datos').item.json.Especialidad }}</p><p style=\"margin:6px 0;font-size:14px\">📅 <strong>Fecha:</strong> {{ $('Preparar datos').item.json.Fecha }}</p><p style=\"margin:6px 0;font-size:14px\">📋 <strong>Motivo:</strong> {{ $('Preparar datos').item.json.Motivo }}</p></div></div></div></div></div>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        5632,
+        1744
+      ],
+      "id": "831d795a-2751-4aa3-b8d7-d9559d9036c1",
+      "name": "Email consultorio",
+      "webhookId": "24ef14a8-bf6d-4c9e-baa7-cf035168e27b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "LoHXz94KQHUal5E3",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "queryString": "Lista Pacientes",
+        "filter": {
+          "driveId": {
+            "__rl": true,
+            "mode": "list",
+            "value": "My Drive"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        5632,
+        1904
+      ],
+      "id": "701523fa-c992-4bd7-8315-1f65d73c9abb",
+      "name": "Buscar Sheet",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "CyRbinrqa6bWvje4",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst datos = $('Preparar datos').first().json;\nconst sheetItem = items.find(i => i.json && i.json.id);\nreturn [{\n  json: {\n    sheet_existe: !!sheetItem,\n    sheet_id: sheetItem ? sheetItem.json.id : null,\n    Nombre: datos.Nombre,\n    Correo: datos.Correo,\n    Telefono: datos.Telefono,\n    Especialidad: datos.Especialidad,\n    Motivo: datos.Motivo,\n    Preferencia: datos.Hora,\n    Fecha: datos.Fecha\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5872,
+        1904
+      ],
+      "id": "c8245bcc-22eb-4bac-88ba-6e0b3756d4d3",
+      "name": "Validar Sheet",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "cond-sheet",
+              "leftValue": "={{ $json.sheet_existe }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            },
+            {
+              "id": "3de4d9c7-e31b-4b37-b7c0-b818252d4bdc",
+              "leftValue": "={{ $json.sheet_existe }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        6112,
+        1904
+      ],
+      "id": "a5ed38d2-3732-4bd8-810f-1affea2053cf",
+      "name": "¿Sheet existe?"
+    },
+    {
+      "parameters": {
+        "resource": "spreadsheet",
+        "title": "Lista Pacientes",
+        "sheetsUi": {
+          "sheetValues": [
+            {
+              "title": "Pacientes"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        6352,
+        2016
+      ],
+      "id": "53f3054d-bab4-46c1-832e-e6f50d69c533",
+      "name": "Crear Sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ADV0jEki6NvxzXcW",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const datos = $('Validar Sheet').first().json;\nlet sheet_id = datos.sheet_id;\ntry {\n  const creado = $('Crear Sheet').first().json;\n  if (creado && creado.spreadsheetId) sheet_id = creado.spreadsheetId;\n} catch(e) {}\nreturn [{\n  json: {\n    sheet_id,\n    Nombre: datos.Nombre,\n    Correo: datos.Correo,\n    Telefono: datos.Telefono,\n    Especialidad: datos.Especialidad,\n    Motivo: datos.Motivo,\n    Preferencia: datos.Preferencia,\n    Fecha: datos.Fecha\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6592,
+        1904
+      ],
+      "id": "e0e02c47-0684-41a1-9abb-2d9d18cd5099",
+      "name": "Preparar inserción"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.sheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Pacientes"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Nombre": "={{ $json.Nombre }}",
+            "Correo": "={{ $json.Correo }}",
+            "Telefono": "={{ $json.Telefono }}",
+            "Especialidad": "={{ $json.Especialidad }}",
+            "Motivo": "={{ $json.Motivo }}",
+            "Preferencia": "={{ $json.Preferencia }}",
+            "Fecha": "={{ $json.Fecha }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Nombre",
+              "displayName": "Nombre",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Correo",
+              "displayName": "Correo",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Telefono",
+              "displayName": "Telefono",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Especialidad",
+              "displayName": "Especialidad",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Motivo",
+              "displayName": "Motivo",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Preferencia",
+              "displayName": "Preferencia",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Fecha",
+              "displayName": "Fecha",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        6848,
+        1904
+      ],
+      "id": "3cf53b8b-125a-48f2-b0e6-f2b470bb4004",
+      "name": "Guardar paciente",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ADV0jEki6NvxzXcW",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Preparar datos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar datos": {
+      "main": [
+        [
+          {
+            "node": "Crear evento Calendar",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Email al paciente",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Email consultorio",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Buscar Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Sheet": {
+      "main": [
+        [
+          {
+            "node": "Validar Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar Sheet": {
+      "main": [
+        [
+          {
+            "node": "¿Sheet existe?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Sheet existe?": {
+      "main": [
+        [
+          {
+            "node": "Preparar inserción",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Crear Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear Sheet": {
+      "main": [
+        [
+          {
+            "node": "Preparar inserción",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar inserción": {
+      "main": [
+        [
+          {
+            "node": "Guardar paciente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "a68c0679-bd75-4315-a196-8de77659cf30",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0c5d5be1f0a8e1cd02c3623db71cc052b01611ff380ed63f1a1779414553964e"
+  },
+  "id": "TZfyZ2QNjuvzN9GC",
+  "tags": []
+}
